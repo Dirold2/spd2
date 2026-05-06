@@ -1,4 +1,4 @@
-import { default as SPApi } from "./SPApi.js";
-import * as Types from "./Types/index.js";
+import { default as SPApi } from "./api/SPApi.js";
+import * as Core from "./core/index.js";
 
-export { SPApi, Types };
+export { SPApi, Core };

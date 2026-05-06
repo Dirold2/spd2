@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { SPApi } from "../src/SPApi.js";
+import { SPApi } from "../src";
 
 const SP_DC = process.env.SPOTIFY_SP_DC || "";
 const api = new SPApi(SP_DC);
@@ -10,11 +10,10 @@ const api = new SPApi(SP_DC);
   }
 
   await api.initialize();
+  // spotify:track:69kOkLUCkxIZYexIgSG8rq
+  // https://open.spotify.com/track/10pXYKoJOxNAWkeGkNeNnH?si=b1cbe210503e4b4b
+  const trackId = "69kOkLUCkxIZYexIgSG8rq";
+  const getAudioUrls = await api.getTrack(trackId);
 
-  const trackId = "7yMiX7n9SBvadzox8T5jzT";
-  const track = await api.getPlaybackInfo(trackId);
-  const getAudioUrls = await api.getAudioUrls(trackId);
-
-  console.log(track);
   console.log(getAudioUrls);
 })();

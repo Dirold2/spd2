@@ -1,4 +1,3 @@
-// constants.ts
 export const TIMEOUT = 30;
 export const HOME_PAGE_URL = "https://open.spotify.com/";
 export const COOKIE_DOMAIN = ".spotify.com";

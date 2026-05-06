@@ -1,7 +1,6 @@
-// totp.ts
 import { createHmac } from "node:crypto";
-import { HttpClientImproved, Request } from "../../hyperttp/src";
-import { TOTP_DIGITS, TOTP_PERIOD, TOTP_SECRETS_URL } from "./constants";
+import { HttpClientImproved } from "hyperttp";
+import { TOTP_DIGITS, TOTP_PERIOD } from "./constants.js";
 
 export class Totp {
   constructor(

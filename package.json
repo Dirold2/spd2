@@ -1,9 +1,9 @@
 {
   "name": "spd2",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A Node.js wrapper for the Spotify API (Unofficial) http://spotify.com",
-  "main": "dist/spd2/src/index.js",
-  "types": "dist/spd2/src/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "author": "Dirold2",
   "contributors": [
     "Dirold2 (https://github.com/dirold2)"
@@ -22,7 +22,7 @@
   ],
   "dependencies": {
     "crypto": "^1.0.1",
-    "hyperttp": "^0.2.3"
+    "hyperttp": "^0.2.4"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

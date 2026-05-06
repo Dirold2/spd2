@@ -1,11 +1,7 @@
 import "dotenv/config";
-import {
-  HttpClientImproved,
-  HttpClientOptions,
-  Request
-} from "../../hyperttp/src";
-import { CLIENT_VERSION, HOME_PAGE_URL } from "../src/constants";
-import { Totp } from "../src/Totp.js";
+import { HttpClientImproved, HttpClientOptions, Request } from "hyperttp";
+import { CLIENT_VERSION, HOME_PAGE_URL } from "../src/core/constants";
+import { Totp } from "../src/core/totp";
 
 const DEFAULT_HTTP_CONFIG: HttpClientOptions = {
   timeout: 15_000,
