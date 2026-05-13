@@ -4,13 +4,18 @@ import { CLIENT_VERSION, HOME_PAGE_URL } from "../src/core/constants";
 import { Totp } from "../src/core/totp";
 
 const DEFAULT_HTTP_CONFIG: HttpClientOptions = {
-  timeout: 15_000,
-  maxRetries: 2,
-  userAgent:
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
-  enableCache: false,
+  network: {
+    timeout: 15000,
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+    allowHttp2: false
+  },
+  retry: {
+    maxRetries: 2
+  },
+  cache: {
+    enabled: false
+  },
   verbose: true,
-  allowHttp2: false
 };
 
 const httpClient = new HttpClientImproved(DEFAULT_HTTP_CONFIG);
@@ -46,7 +51,7 @@ async function getSessionToken(totpCode: string, totpVer: string) {
       "content-type": "application/json",
       origin: HOME_PAGE_URL,
       referer: HOME_PAGE_URL,
-      "user-agent": DEFAULT_HTTP_CONFIG.userAgent!,
+      "user-agent": DEFAULT_HTTP_CONFIG.network?.userAgent!,
       "spotify-app-version": CLIENT_VERSION,
       "app-platform": "WebPlayer"
     }
@@ -100,7 +105,7 @@ async function main() {
       "Accept-Language": "en-US,en;q=0.9",
       Origin: HOME_PAGE_URL,
       Referer: HOME_PAGE_URL,
-      "User-Agent": DEFAULT_HTTP_CONFIG.userAgent!,
+      "User-Agent": DEFAULT_HTTP_CONFIG.network?.userAgent!,
       "Spotify-App-Version": CLIENT_VERSION,
       "App-Platform": "WebPlayer"
     },

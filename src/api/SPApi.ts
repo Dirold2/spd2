@@ -1,4 +1,4 @@
-import { HttpClientImproved, HttpClientOptions, Request } from "hyperttp";
+import { HttpClientImproved, Request } from "hyperttp";
 import { LRUCache } from "lru-cache";
 import {
   AuthManager,
@@ -7,16 +7,22 @@ import {
   TrackAudio,
   normalizeTrackId
 } from "../core/index.js";
+import type { HttpClientOptions } from "hyperttp";
 
 const DEFAULT_HTTP_CONFIG: HttpClientOptions = {
-  timeout: 15_000,
-  maxRetries: 2,
-  userAgent:
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
-  enableCache: false,
+  network: {
+    timeout: 15000,
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+    allowHttp2: false,
+    maxResponseBytes: 100 * 1024 * 1024
+  },
+  retry: {
+    maxRetries: 2,
+  },
+  cache: {
+    enabled: true
+  },
   verbose: true,
-  allowHttp2: false,
-  maxResponseBytes: 100 * 1024 * 1024,
   logger: (level, message, meta) => {
     console.log(`[HTTP ${level.toUpperCase()}] ${message}`, meta || "");
   }

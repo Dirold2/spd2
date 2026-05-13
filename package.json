@@ -1,6 +1,6 @@
 {
   "name": "spd2",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "A Node.js wrapper for the Spotify API (Unofficial) http://spotify.com",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -22,10 +22,10 @@
   ],
   "dependencies": {
     "crypto": "^1.0.1",
-    "hyperttp": "^0.2.4"
+    "hyperttp": "^0.2.5"
   },
   "devDependencies": {
-    "@types/node": "^25.6.0",
+    "@types/node": "^25.7.0",
     "chalk": "^5.6.2",
     "dotenv-cli": "^11.0.0",
     "prettier": "^3.8.3",
