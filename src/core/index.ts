@@ -1,6 +1,6 @@
 export { AuthManager } from "./auth.js";
 export { PlaybackManager } from "./playback.js";
-export * from "./types.js";
+export type * from "./types.js";
 
 /**
  * Normalize Spotify track ID (remove spotify:track: prefix if present)

@@ -1,12 +1,7 @@
-import { HttpClientImproved, Request } from "hyperttp";
-import { LRUCache } from "lru-cache";
+import { HyperClient } from "hyperttp";
+import { CacheManager } from "hcacher";
 import { AuthManager } from "./auth.js";
-import {
-  SpotifyPlaybackResponse,
-  TrackFile,
-  TrackUrl,
-  TrackAudio
-} from "./types.js";
+import type { SpotifyPlaybackResponse, TrackUrl, TrackAudio } from "./types.js";
 import { CLIENT_VERSION } from "./constants.js";
 
 const PLAYBACK_QUERY = {
@@ -15,25 +10,25 @@ const PLAYBACK_QUERY = {
 };
 
 export class PlaybackManager {
-  private http: HttpClientImproved;
+  private http: HyperClient;
   private auth: AuthManager;
 
   private cache = {
-    playback: new LRUCache<string, SpotifyPlaybackResponse>({
-      max: 300,
+    playback: new CacheManager<SpotifyPlaybackResponse>({
+      maxSize: 300,
       ttl: 120_000
     }),
-    audio: new LRUCache<string, TrackAudio>({ max: 1000, ttl: 600_000 })
+    audio: new CacheManager<TrackAudio>({ maxSize: 1000, ttl: 600_000 })
   };
 
-  private resolveCache = new LRUCache<string, string>({
-    max: 5000,
+  private resolveCache = new CacheManager<string>({
+    maxSize: 5000,
     ttl: 1000 * 60 * 60
   });
 
   private inflight = new Map<string, Promise<any>>();
 
-  constructor(http: HttpClientImproved, auth: AuthManager) {
+  constructor(http: HyperClient, auth: AuthManager) {
     this.http = http;
     this.auth = auth;
   }
@@ -45,22 +40,18 @@ export class PlaybackManager {
     if (cached) return cached;
 
     return this.dedupe(`playback:${trackId}`, async () => {
-      const req = new Request({
-        scheme: "https",
-        host: "spclient.wg.spotify.com",
-        port: 443,
-        path: `/track-playback/v1/media/spotify:track:${trackId}`,
-        query: {
-          ...PLAYBACK_QUERY
-        },
-        headers: {
-          ...this.auth.getHeaders(),
-          "App-Platform": "WebPlayer",
-          "Spotify-App-Version": CLIENT_VERSION
+      const res = await this.http.get<SpotifyPlaybackResponse>(
+        `https://spclient.wg.spotify.com/track-playback/v1/media/spotify:track:${trackId}`,
+        {
+          query: PLAYBACK_QUERY,
+          headers: {
+            ...this.auth.getHeaders(),
+            "App-Platform": "WebPlayer",
+            "Spotify-App-Version": CLIENT_VERSION
+          },
+          responseType: "json"
         }
-      });
-
-      const res = await this.http.get<SpotifyPlaybackResponse>(req, "json");
+      );
 
       if (res?.error_code === 8) {
         throw new Error("INVALID_USER");
@@ -81,7 +72,7 @@ export class PlaybackManager {
       const playback = await this.getPlaybackInfo(trackId);
 
       const mediaKey = Object.keys(playback.media)[0];
-      const item = playback.media[mediaKey]?.item;
+      const item = mediaKey ? playback.media[mediaKey]?.item : undefined;
       const files =
         item?.manifest?.file_ids_mp4flac || item?.manifest?.file_ids_mp4 || [];
 
@@ -127,21 +118,19 @@ export class PlaybackManager {
 
     for (const host of hosts) {
       try {
-        const req = new Request({
-          scheme: "https",
-          host,
-          port: 443,
-          path: `/storage-resolve/v2/files/audio/interactive/${formatId}/${fileId}`,
-          query: {
-            version: "10000000",
-            product: "9",
-            platform: "39",
-            alt: "json"
-          },
-          headers: this.auth.getHeaders()
-        });
-
-        const res = await this.http.get<any>(req, "json");
+        const res = await this.http.get<any>(
+          `https://${host}/storage-resolve/v2/files/audio/interactive/${formatId}/${fileId}`,
+          {
+            query: {
+              version: "10000000",
+              product: "9",
+              platform: "39",
+              alt: "json"
+            },
+            headers: this.auth.getHeaders(),
+            responseType: "json"
+          }
+        );
         const url = res?.cdnurl?.[0] || res?.url;
 
         if (url) {

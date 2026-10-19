@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { SPApi } from "../src";
+import { SPApi } from "../src/index.js";
 
 const SP_DC = process.env.SPOTIFY_SP_DC || "";
 const api = new SPApi(SP_DC);

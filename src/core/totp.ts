@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { HttpClientImproved } from "hyperttp";
+import { HyperClient } from "hyperttp";
 import { TOTP_DIGITS, TOTP_PERIOD } from "./constants.js";
 
 export class Totp {
@@ -8,7 +8,7 @@ export class Totp {
     private readonly secret: Buffer
   ) {}
 
-  static async initialize(httpClient: HttpClientImproved): Promise<Totp> {
+  static async initialize(httpClient: HyperClient): Promise<Totp> {
     const secrets = await httpClient.get<Record<string, number[]>>(
       "https://git.gay/thereallo/totp-secrets/raw/branch/main/secrets/secretDict.json",
       "json"
@@ -26,7 +26,12 @@ export class Totp {
       throw new Error("No TOTP version found");
     }
 
-    return new Totp(version, Totp.derive(secrets[version]));
+    const ciphertext = secrets[version];
+    if (!ciphertext) {
+      throw new Error(`No TOTP secret for version ${version}`);
+    }
+
+    return new Totp(version, Totp.derive(ciphertext));
   }
 
   static derive(ciphertext: ArrayLike<number>): Buffer {
@@ -46,12 +51,8 @@ export class Totp {
       .update(counterBytes)
       .digest();
 
-    const offset = hmacResult[hmacResult.length - 1] & 0x0f;
-    const binary =
-      ((hmacResult[offset] & 0x7f) << 24) |
-      ((hmacResult[offset + 1] & 0xff) << 16) |
-      ((hmacResult[offset + 2] & 0xff) << 8) |
-      (hmacResult[offset + 3] & 0xff);
+    const offset = hmacResult.readUInt8(hmacResult.length - 1) & 0x0f;
+    const binary = hmacResult.readUInt32BE(offset) & 0x7fffffff;
 
     return String(binary % 10 ** TOTP_DIGITS).padStart(TOTP_DIGITS, "0");
   }
