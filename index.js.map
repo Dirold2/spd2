@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../src/index.ts"],
+  "sourcesContent": ["import { default as SPApi } from \"./api/SPApi.js\";\nimport * as Core from \"./core/index.js\";\n\nexport { SPApi, Core };\n"],
+  "mappings": "aAAA,OAAS,WAAWA,MAAa,iBACjC,UAAYC,MAAU,kBAEtB,OAASD,KAAA,MAAOC,KAAA",
+  "names": ["SPApi", "Core"]
+}

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../src/core/index.ts"],
+  "sourcesContent": ["export { AuthManager } from \"./auth.js\";\nexport { PlaybackManager } from \"./playback.js\";\nexport type * from \"./types.js\";\n\n/**\n * Normalize Spotify track ID (remove spotify:track: prefix if present)\n */\nexport function normalizeTrackId(id: string): string {\n  return id.replace(/^spotify:track:/, \"\");\n}\n"],
+  "mappings": "aAAA,OAAS,gBAAmB,YAC5B,OAAS,oBAAuB,gBAM1B,gBAAU,iBAAiBA,EAAU,CACzC,OAAOA,EAAG,QAAQ,kBAAmB,EAAE,CACzC",
+  "names": ["id"]
+}
