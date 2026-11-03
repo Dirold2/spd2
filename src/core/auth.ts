@@ -57,7 +57,7 @@ export class AuthManager {
     return {
       Authorization: `Bearer ${this.user.token}`,
       "Client-Token": this.user.clientToken,
-      Cookie: `sp_dc=${this.spDc}`
+      Cookie: `sp_dc=${this.spDc}`,
     };
   }
 
@@ -65,7 +65,7 @@ export class AuthManager {
     return {
       Referer: HOME_PAGE_URL,
       "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
     };
   }
 
@@ -87,10 +87,9 @@ export class AuthManager {
 
   private async getServerTime(): Promise<number> {
     return this.dedupe("server-time", async () => {
-      const res = await this.http.get<any>(
-        "https://open.spotify.com/api/server-time",
-        { responseType: "json" }
-      );
+      const res = await this.http.get<any>("https://open.spotify.com/api/server-time", {
+        responseType: "json",
+      });
       return res.serverTime ? res.serverTime * 1000 : Date.now();
     });
   }
@@ -103,7 +102,7 @@ export class AuthManager {
           productType: "web-player",
           totp: totpCode,
           totpServer: totpCode,
-          totpVer: this.totp?.version ?? ""
+          totpVer: this.totp?.version ?? "",
         },
         headers: {
           accept: "application/json",
@@ -112,17 +111,16 @@ export class AuthManager {
           referer: HOME_PAGE_URL,
           Cookie: `sp_dc=${this.spDc}`,
           "spotify-app-version": CLIENT_VERSION,
-          "app-platform": "WebPlayer"
+          "app-platform": "WebPlayer",
         },
-        responseType: "json"
+        responseType: "json",
       });
 
       return {
         accessToken: res.accessToken ?? res.access_token,
         clientId: res.clientId ?? res.client_id,
         accessTokenExpirationTimestampMs:
-          res.accessTokenExpirationTimestampMs ??
-          Date.now() + (res.expiresIn || 3600) * 1000
+          res.accessTokenExpirationTimestampMs ?? Date.now() + (res.expiresIn || 3600) * 1000,
       };
     });
   }
@@ -136,9 +134,9 @@ export class AuthManager {
           js_sdk_data: {
             device_model: "unknown",
             os: "Windows",
-            os_version: "10"
-          }
-        }
+            os_version: "10",
+          },
+        },
       };
 
       const res = await this.http.post<ClientTokenResponse>(
@@ -154,10 +152,10 @@ export class AuthManager {
             "User-Agent":
               "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
             "Spotify-App-Version": CLIENT_VERSION,
-            "App-Platform": "WebPlayer"
+            "App-Platform": "WebPlayer",
           },
-          responseType: "json"
-        }
+          responseType: "json",
+        },
       );
 
       if (!res?.granted_token?.token) {

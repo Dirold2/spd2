@@ -7,8 +7,11 @@ import { HyperClient } from "hyperttp";
 const projectRoot = path.resolve(import.meta.dirname, ".");
 const isVerbose = process.argv.includes("--verbose");
 const isBun = !!process.versions.bun;
+const timeoutArg = process.argv.find((arg) => arg.startsWith("--timeout="));
+const testTimeoutMs = timeoutArg ? Number(timeoutArg.slice("--timeout=".length)) : 30_000;
 
 type TestEntry = { label: string; file: string };
+type TestResult = { label: string; ok: boolean; ms: number };
 
 // ----------------------------
 // SCAN FILES
@@ -18,7 +21,9 @@ function scanDir(dir: string): TestEntry[] {
   if (!fs.existsSync(absDir)) return [];
 
   const entries: TestEntry[] = [];
-  const items = fs.readdirSync(absDir, { withFileTypes: true });
+  const items = fs
+    .readdirSync(absDir, { withFileTypes: true })
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   for (const item of items) {
     const absPath = path.join(absDir, item.name);
@@ -36,21 +41,23 @@ function scanDir(dir: string): TestEntry[] {
   return entries;
 }
 
-const tests: TestEntry[] = [...scanDir("example"), ...scanDir("tests")];
+const tests: TestEntry[] = scanDir("example");
 
 // ----------------------------
 // RUN SINGLE TEST
 // ----------------------------
-async function runOne(test: TestEntry) {
+async function runOne(test: TestEntry): Promise<TestResult> {
   if (!fs.existsSync(test.file)) {
     console.log(`${chalk.dim("→")} ${chalk.bold(test.label)} ${chalk.yellow("⚠ missing")}`);
     return { label: test.label, ok: false, ms: 0 };
   }
 
+  console.log(`${chalk.dim("→")} ${chalk.bold(test.label)} ${chalk.gray("running...")}`);
+
   const start = performance.now();
 
-  const cmd = isBun ? "bun" : "npx";
-  const args = isBun ? ["run", test.file] : ["tsx", test.file];
+  const cmd = process.execPath;
+  const args = isBun ? [test.file] : ["--import", "tsx", test.file];
 
   const child = spawn(cmd, args, {
     cwd: projectRoot,
@@ -72,14 +79,21 @@ async function runOne(test: TestEntry) {
     });
   }
 
-  return new Promise((resolve) => {
-    child.on("close", (code) => {
+  return new Promise<TestResult>((resolve) => {
+    let settled = false;
+    let timedOut = false;
+
+    const finish = (code: number | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+
       const ms = Math.round(performance.now() - start);
-      const ok = code === 0;
+      const ok = !timedOut && code === 0;
 
       console.log(
-        `${chalk.dim("→")} ${chalk.bold(test.label)} ${
-          ok ? chalk.green("✔") : chalk.red("✖")
+        `${chalk.dim("←")} ${chalk.bold(test.label)} ${
+          ok ? chalk.green("✔") : chalk.red(timedOut ? "✖ timeout" : "✖")
         } ${chalk.gray(`[${ms}ms]`)}`,
       );
 
@@ -88,7 +102,21 @@ async function runOne(test: TestEntry) {
       }
 
       resolve({ label: test.label, ok, ms });
+    };
+
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGTERM");
+      setTimeout(() => {
+        if (!settled) child.kill("SIGKILL");
+      }, 1_000).unref();
+    }, testTimeoutMs);
+
+    child.once("error", (error) => {
+      console.error(`Failed to start ${test.label}: ${error.message}`);
+      finish(1);
     });
+    child.once("close", (code) => finish(code));
   });
 }
 
@@ -96,11 +124,15 @@ async function runOne(test: TestEntry) {
 // MAIN
 // ----------------------------
 (async () => {
+  if (!Number.isSafeInteger(testTimeoutMs) || testTimeoutMs <= 0 || testTimeoutMs > 2_147_483_647) {
+    throw new Error("--timeout must be a positive integer in milliseconds (maximum 2147483647)");
+  }
   const runtime = isBun ? chalk.yellow("Bun") : chalk.green("Node/tsx");
   const core = new HyperClient();
 
   console.log(chalk.cyan(`\n🚀 Smoke tests (${runtime})\n`));
   console.log(chalk.cyan(`Transport: ${await core.getTransportName()}`));
+  console.log(chalk.gray(`Timeout: ${testTimeoutMs}ms per example. Unit tests: bun run vitest\n`));
 
   const results = [];
 
@@ -108,20 +140,21 @@ async function runOne(test: TestEntry) {
     results.push(await runOne(test));
   }
 
-  const ok = results.filter((r) => (r as any).ok).length;
+  const ok = results.filter((r) => r.ok).length;
   const fail = results.length - ok;
 
   console.log(chalk.cyan("\n═ Summary ═══════════════════════════"));
 
   for (const r of results) {
     console.log(
-      `${(r as any).ok ? chalk.green("✔") : chalk.red("✖")} ${(r as any).label} ${chalk.gray(
-        `[${(r as any).ms}ms]`,
-      )}`,
+      `${r.ok ? chalk.green("✔") : chalk.red("✖")} ${r.label} ${chalk.gray(`[${r.ms}ms]`)}`,
     );
   }
 
   console.log(`\nTotal: ${results.length} | ${chalk.green(ok)} ok | ${chalk.red(fail)} failed\n`);
 
   process.exit(fail > 0 ? 1 : 0);
-})();
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

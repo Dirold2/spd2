@@ -6,7 +6,7 @@ import { CLIENT_VERSION } from "./constants.js";
 
 const PLAYBACK_QUERY = {
   manifestFileFormat: `file_ids_mp4`,
-  manifestFileFormatFlac: `file_ids_mp4flac`
+  manifestFileFormatFlac: `file_ids_mp4flac`,
 };
 
 export class PlaybackManager {
@@ -16,14 +16,14 @@ export class PlaybackManager {
   private cache = {
     playback: new CacheManager<SpotifyPlaybackResponse>({
       maxSize: 300,
-      ttl: 120_000
+      ttl: 120_000,
     }),
-    audio: new CacheManager<TrackAudio>({ maxSize: 1000, ttl: 600_000 })
+    audio: new CacheManager<TrackAudio>({ maxSize: 1000, ttl: 600_000 }),
   };
 
   private resolveCache = new CacheManager<string>({
     maxSize: 5000,
-    ttl: 1000 * 60 * 60
+    ttl: 1000 * 60 * 60,
   });
 
   private inflight = new Map<string, Promise<any>>();
@@ -47,10 +47,10 @@ export class PlaybackManager {
           headers: {
             ...this.auth.getHeaders(),
             "App-Platform": "WebPlayer",
-            "Spotify-App-Version": CLIENT_VERSION
+            "Spotify-App-Version": CLIENT_VERSION,
           },
-          responseType: "json"
-        }
+          responseType: "json",
+        },
       );
 
       if (res?.error_code === 8) {
@@ -73,8 +73,7 @@ export class PlaybackManager {
 
       const mediaKey = Object.keys(playback.media)[0];
       const item = mediaKey ? playback.media[mediaKey]?.item : undefined;
-      const files =
-        item?.manifest?.file_ids_mp4flac || item?.manifest?.file_ids_mp4 || [];
+      const files = item?.manifest?.file_ids_mp4flac || item?.manifest?.file_ids_mp4 || [];
 
       const urlPromises = files.map(async (file: any) => {
         const url = await this.resolveAudioFile(file.format, file.file_id);
@@ -84,7 +83,7 @@ export class PlaybackManager {
           quality: this.getQualityLabel(file.format),
           fileId: file.file_id,
           format: file.format,
-          url
+          url,
         };
       });
 
@@ -95,9 +94,9 @@ export class PlaybackManager {
           format: f.format,
           fileId: f.file_id,
           bitrate: f.bitrate,
-          quality: f.audio_quality
+          quality: f.audio_quality,
         })),
-        urls: urls as TrackUrl[]
+        urls: urls as TrackUrl[],
       };
 
       this.cache.audio.set(trackId, result);
@@ -105,10 +104,7 @@ export class PlaybackManager {
     });
   }
 
-  private async resolveAudioFile(
-    formatId: string,
-    fileId: string
-  ): Promise<string | null> {
+  private async resolveAudioFile(formatId: string, fileId: string): Promise<string | null> {
     const cacheKey = `${formatId}:${fileId}`;
     if (this.resolveCache.has(cacheKey)) {
       return this.resolveCache.get(cacheKey)!;
@@ -125,11 +121,11 @@ export class PlaybackManager {
               version: "10000000",
               product: "9",
               platform: "39",
-              alt: "json"
+              alt: "json",
             },
             headers: this.auth.getHeaders(),
-            responseType: "json"
-          }
+            responseType: "json",
+          },
         );
         const url = res?.cdnurl?.[0] || res?.url;
 
@@ -153,7 +149,7 @@ export class PlaybackManager {
     "16": "FLAC_FLAC",
     "17": "MP4_FLAC",
     "22": "FLAC_FLAC_24",
-    "23": "MP4_FLAC_24"
+    "23": "MP4_FLAC_24",
   };
 
   private getQualityLabel(formatId: string): string {

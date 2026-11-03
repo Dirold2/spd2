@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.3.0] — 2026-11-03
+
+### Added
+
+- `getAlbum()` and `getPlaylist()` return collection metadata with a normalized `tracks` array.
+- Collection methods accept Spotify IDs, URIs, and URLs, including localized URLs.
+- Vitest coverage for collection metadata, pagination, caching, validation, and rate limits.
+
+### Changed
+
+- Updated `hyperttp` to `^0.7.4`.
+- Search now trims queries and limits results to between 1 and 10 per resource type, with a default of 10.
+
+### Fixed
+
+- Reject empty search queries and report Spotify search API errors.
+- Updated album and playlist examples to use `getAlbum()` and `getPlaylist()`.
+- Validate collection `maxTracks` values and continue pagination past pages containing only unavailable tracks.
+
 ## [1.2.0] — 2026-10-16
 
 ### Added

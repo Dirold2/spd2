@@ -11,8 +11,8 @@ const api = new SPApi(SP_DC);
 
   await api.initialize();
   // spotify:track:69kOkLUCkxIZYexIgSG8rq
-  // https://open.spotify.com/track/10pXYKoJOxNAWkeGkNeNnH?si=b1cbe210503e4b4b
-  const trackId = "69kOkLUCkxIZYexIgSG8rq";
+  // https://open.spotify.com/track/1VdRB7TUTWuRR7MaaAsiRX?si=25ee82db5e4b4c82
+  const trackId = "1VdRB7TUTWuRR7MaaAsiRX";
   const getAudioUrls = await api.getTrack(trackId);
 
   console.log(getAudioUrls);

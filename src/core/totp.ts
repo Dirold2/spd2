@@ -5,13 +5,13 @@ import { TOTP_DIGITS, TOTP_PERIOD } from "./constants.js";
 export class Totp {
   constructor(
     public readonly version: string,
-    private readonly secret: Buffer
+    private readonly secret: Buffer,
   ) {}
 
   static async initialize(httpClient: HyperClient): Promise<Totp> {
     const secrets = await httpClient.get<Record<string, number[]>>(
       "https://git.gay/thereallo/totp-secrets/raw/branch/main/secrets/secretDict.json",
-      "json"
+      "json",
     );
 
     if (!secrets || typeof secrets !== "object") {
@@ -35,9 +35,7 @@ export class Totp {
   }
 
   static derive(ciphertext: ArrayLike<number>): Buffer {
-    const bytes = Array.from(ciphertext, (byte, i) =>
-      String(byte ^ ((i % 33) + 9))
-    ).join("");
+    const bytes = Array.from(ciphertext, (byte, i) => String(byte ^ ((i % 33) + 9))).join("");
     return Buffer.from(bytes, "ascii");
   }
 
@@ -47,9 +45,7 @@ export class Totp {
     const counterBytes = Buffer.alloc(8);
     counterBytes.writeBigUInt64BE(BigInt(counter));
 
-    const hmacResult = createHmac("sha1", this.secret)
-      .update(counterBytes)
-      .digest();
+    const hmacResult = createHmac("sha1", this.secret).update(counterBytes).digest();
 
     const offset = hmacResult.readUInt8(hmacResult.length - 1) & 0x0f;
     const binary = hmacResult.readUInt32BE(offset) & 0x7fffffff;

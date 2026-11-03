@@ -78,6 +78,24 @@ export interface SpotifyAlbum {
   images: Image[];
 }
 
+export interface SpotifyAlbumDetails extends SpotifyAlbum {
+  tracks: SpotifyPlaylistTrack[];
+}
+
+export interface SpotifyPlaylist {
+  id: string;
+  name: string;
+  description: string | null;
+  images: Image[];
+  owner: { id: string; display_name: string | null };
+  public: boolean | null;
+  collaborative: boolean;
+}
+
+export interface SpotifyPlaylistDetails extends SpotifyPlaylist {
+  tracks: SpotifyPlaylistTrack[];
+}
+
 export interface ClientTokenResponse {
   granted_token?: {
     token: string;

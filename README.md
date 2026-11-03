@@ -72,6 +72,24 @@ async function main() {
 main();
 ```
 
+### Albums and Playlists
+
+```typescript
+const album = await api.getAlbum(
+  "https://open.spotify.com/album/77a2uhKK8cLvTS0FMyutU7",
+  { maxTracks: 100 },
+);
+console.log(album.name, album.images, album.tracks);
+
+const playlist = await api.getPlaylist("spotify:playlist:37i9dQZF1DZ06evO3uNJq9");
+console.log(playlist.name, playlist.owner, playlist.tracks);
+```
+
+Both methods accept an ID, Spotify URI, or `https://open.spotify.com` URL.
+They return collection metadata with `tracks` as a normalized array, not a Spotify paging object.
+`maxTracks` defaults to 1,000; use `0` to fetch metadata only. Results are cached for one minute.
+`getAlbumTracks()` and `getPlaylistTracks()` remain available when only the track array is needed.
+
 ### Available Methods
 
 | Method                  | Description                                       |
@@ -80,6 +98,10 @@ main();
 | `getTrack(id)`          | Returns metadata (name, artist, album, duration). |
 | `getAudio(id, options)` | Returns file info and resolved CDN URLs.          |
 | `search(query, limit)`  | Searches for tracks, albums, and artists.         |
+| `getAlbum(id, options)` | Returns album metadata and a normalized track array. |
+| `getPlaylist(id, options)` | Returns playlist metadata and a normalized track array. |
+| `getAlbumTracks(id, options)` | Returns only album tracks. |
+| `getPlaylistTracks(id, options)` | Returns only playlist tracks. |
 | `getPlaybackInfo(id)`   | Raw playback data from Spotify API.               |
 
 ## 📂 Project Structure

@@ -3,6 +3,9 @@ import { CacheManager } from "hcacher";
 import { AuthManager, PlaybackManager, normalizeTrackId } from "../core/index.js";
 import type {
   SpotifyAlbum,
+  SpotifyAlbumDetails,
+  SpotifyPlaylist,
+  SpotifyPlaylistDetails,
   SpotifyAlbumTracksPage,
   SpotifyPlaybackResponse,
   SpotifyPlaylistTrack,
@@ -10,6 +13,8 @@ import type {
   TrackMeta,
   TrackAudio,
 } from "../core/index.js";
+
+const MAX_AUTOMATIC_RETRY_DELAY_MS = 5_000;
 
 export class SPApi {
   private http: HyperClient;
@@ -22,6 +27,14 @@ export class SPApi {
     ttl: 60_000,
   });
   private albumCache = new CacheManager<SpotifyPlaylistTrack[]>({
+    maxSize: 100,
+    ttl: 60_000,
+  });
+  private collectionCache = new CacheManager<SpotifyAlbumDetails | SpotifyPlaylistDetails>({
+    maxSize: 100,
+    ttl: 60_000,
+  });
+  private collectionMetadataCache = new CacheManager<SpotifyAlbum | SpotifyPlaylist>({
     maxSize: 100,
     ttl: 60_000,
   });
@@ -126,12 +139,108 @@ export class SPApi {
     });
   }
 
+  async getAlbum(
+    albumId: string,
+    options: { maxTracks?: number } = {},
+  ): Promise<SpotifyAlbumDetails> {
+    const id = this.normalizeCollectionId(albumId, "album");
+    const maxTracks = this.collectionLimit(options.maxTracks);
+    const key = `album-details:${id}:${maxTracks}`;
+    return this.dedupe(key, async () => {
+      const cached = this.collectionCache.get(key);
+      if (cached) return cached as SpotifyAlbumDetails;
+      const album = await this.getCollectionMetadata<SpotifyAlbum>("album", id);
+      const tracks = await this.getAlbumTracks(id, { maxTracks });
+      const result = { ...album, tracks };
+      this.collectionCache.set(key, result);
+      return result;
+    });
+  }
+
+  async getPlaylist(
+    playlistId: string,
+    options: { maxTracks?: number } = {},
+  ): Promise<SpotifyPlaylistDetails> {
+    const id = this.normalizeCollectionId(playlistId, "playlist");
+    const maxTracks = this.collectionLimit(options.maxTracks);
+    const key = `playlist-details:${id}:${maxTracks}`;
+    return this.dedupe(key, async () => {
+      const cached = this.collectionCache.get(key);
+      if (cached) return cached as SpotifyPlaylistDetails;
+      const playlist = await this.getCollectionMetadata<SpotifyPlaylist>("playlist", id);
+      const tracks = await this.getPlaylistTracks(id, { maxTracks });
+      const result = { ...playlist, tracks };
+      this.collectionCache.set(key, result);
+      return result;
+    });
+  }
+
+  private normalizeCollectionId(input: string, type: "album" | "playlist"): string {
+    const value = input.trim();
+    const uri = value.match(new RegExp(`^spotify:${type}:([a-zA-Z0-9]+)$`));
+    if (uri?.[1]) return uri[1];
+    if (/^[a-zA-Z0-9]+$/.test(value)) return value;
+    try {
+      const url = new URL(value);
+      const match = url.pathname.match(new RegExp(`^/(?:intl-[^/]+/)?${type}/([a-zA-Z0-9]+)/?$`));
+      if (url.protocol === "https:" && url.hostname === "open.spotify.com" && match?.[1]) {
+        return match[1];
+      }
+    } catch {
+      // Non-URL input is rejected below.
+    }
+    throw new Error(`Invalid Spotify ${type} ID, URI, or URL`);
+  }
+
+  private collectionLimit(value = 1_000): number {
+    if (!Number.isInteger(value) || value < 0) {
+      throw new Error("maxTracks must be a non-negative integer");
+    }
+    return value;
+  }
+
+  private async getCollectionMetadata<T extends SpotifyAlbum | SpotifyPlaylist>(
+    type: "album" | "playlist",
+    id: string,
+  ): Promise<T> {
+    const key = `${type}:${id}`;
+    const cached = this.collectionMetadataCache.get(key);
+    if (cached) return cached as T;
+    await this.auth.initialize();
+    const request = () =>
+      this.http.rest.get<T>(`https://api.spotify.com/v1/${type}s/${encodeURIComponent(id)}`, {
+        timeout: 15_000,
+        query: { market: "from_token" },
+        headers: { Authorization: `Bearer ${this.auth.getUser().token}` },
+      });
+    let response = await request();
+    for (let retry = 0; response.status === 429 && retry < 2; retry += 1) {
+      const header = response.headers["retry-after"];
+      const seconds = Array.isArray(header) ? header[0] : header;
+      const delay = Number(seconds) * 1_000;
+      if (!Number.isFinite(delay) || delay <= 0 || delay > MAX_AUTOMATIC_RETRY_DELAY_MS) break;
+      await new Promise<void>((resolve) => setTimeout(resolve, delay));
+      response = await request();
+    }
+    if (!response.ok) {
+      const header = response.headers["retry-after"];
+      const seconds = Array.isArray(header) ? header[0] : header;
+      throw new Error(
+        response.status === 429
+          ? `Spotify ${type} request is rate limited${seconds ? `; retry after ${seconds}s` : ""}`
+          : `Spotify ${type} request failed with HTTP ${response.status}`,
+      );
+    }
+    this.collectionMetadataCache.set(key, response.data);
+    return response.data;
+  }
+
   async getPlaylistTracks(
     playlistId: string,
     options: { maxTracks?: number } = {},
   ): Promise<SpotifyPlaylistTrack[]> {
-    const id = playlistId.replace(/^spotify:playlist:/, "");
-    const maxTracks = options.maxTracks ?? 1_000;
+    const id = this.normalizeCollectionId(playlistId, "playlist");
+    const maxTracks = this.collectionLimit(options.maxTracks);
     const cacheKey = `playlist:${id}:${maxTracks}`;
 
     await this.auth.initialize();
@@ -148,6 +257,7 @@ export class SPApi {
           this.http.rest.get<SpotifyPlaylistTracksPage>(
             `https://api.spotify.com/v1/playlists/${encodeURIComponent(id)}/tracks`,
             {
+              timeout: 15_000,
               query: {
                 additional_types: "track",
                 limit: String(Math.min(pageSize, maxTracks - tracks.length)),
@@ -167,7 +277,8 @@ export class SPApi {
           const seconds = Array.isArray(retryAfter) ? retryAfter[0] : retryAfter;
           const delayMs = Number(seconds) * 1_000;
 
-          if (!Number.isFinite(delayMs) || delayMs <= 0 || delayMs > 60_000) break;
+          if (!Number.isFinite(delayMs) || delayMs <= 0 || delayMs > MAX_AUTOMATIC_RETRY_DELAY_MS)
+            break;
 
           await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
           response = await requestPage();
@@ -191,7 +302,7 @@ export class SPApi {
           .filter((track): track is SpotifyPlaylistTrack => Boolean(track?.id));
         tracks.push(...pageTracks);
 
-        if (!page.next || pageTracks.length === 0) break;
+        if (!page.next || page.items.length === 0) break;
       }
 
       this.playlistCache.set(cacheKey, tracks);
@@ -203,8 +314,8 @@ export class SPApi {
     albumId: string,
     options: { maxTracks?: number } = {},
   ): Promise<SpotifyPlaylistTrack[]> {
-    const id = albumId.replace(/^spotify:album:/, "");
-    const maxTracks = options.maxTracks ?? 1_000;
+    const id = this.normalizeCollectionId(albumId, "album");
+    const maxTracks = this.collectionLimit(options.maxTracks);
     const cacheKey = `album:${id}:${maxTracks}`;
 
     await this.auth.initialize();
@@ -213,41 +324,8 @@ export class SPApi {
       const cached = this.albumCache.get(cacheKey);
       if (cached) return cached;
 
-      const headers = {
-        Authorization: `Bearer ${this.auth.getUser().token}`,
-        "Content-Type": "application/json",
-      };
-      const requestAlbum = () =>
-        this.http.rest.get<SpotifyAlbum>(
-          `https://api.spotify.com/v1/albums/${encodeURIComponent(id)}`,
-          { query: { market: "from_token" }, headers },
-        );
-
-      let albumResponse = await requestAlbum();
-      for (let retry = 0; albumResponse.status === 429 && retry < 2; retry += 1) {
-        const retryAfter = albumResponse.headers["retry-after"];
-        const seconds = Array.isArray(retryAfter) ? retryAfter[0] : retryAfter;
-        const delayMs = Number(seconds) * 1_000;
-
-        if (!Number.isFinite(delayMs) || delayMs <= 0 || delayMs > 60_000) break;
-
-        await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
-        albumResponse = await requestAlbum();
-      }
-
-      if (albumResponse.status === 429) {
-        const retryAfter = albumResponse.headers["retry-after"];
-        const seconds = Array.isArray(retryAfter) ? retryAfter[0] : retryAfter;
-        throw new Error(
-          `Spotify album request is rate limited${seconds ? `; retry after ${seconds}s` : ""}`,
-        );
-      }
-
-      if (!albumResponse.ok) {
-        throw new Error(`Spotify album request failed with HTTP ${albumResponse.status}`);
-      }
-
-      const album = albumResponse.data;
+      const album = await this.getCollectionMetadata<SpotifyAlbum>("album", id);
+      const headers = { Authorization: `Bearer ${this.auth.getUser().token}` };
       const tracks: SpotifyPlaylistTrack[] = [];
       const pageSize = 50;
 
@@ -256,6 +334,7 @@ export class SPApi {
           this.http.rest.get<SpotifyAlbumTracksPage>(
             `https://api.spotify.com/v1/albums/${encodeURIComponent(id)}/tracks`,
             {
+              timeout: 15_000,
               query: {
                 limit: String(Math.min(pageSize, maxTracks - tracks.length)),
                 market: "from_token",
@@ -271,7 +350,8 @@ export class SPApi {
           const seconds = Array.isArray(retryAfter) ? retryAfter[0] : retryAfter;
           const delayMs = Number(seconds) * 1_000;
 
-          if (!Number.isFinite(delayMs) || delayMs <= 0 || delayMs > 60_000) break;
+          if (!Number.isFinite(delayMs) || delayMs <= 0 || delayMs > MAX_AUTOMATIC_RETRY_DELAY_MS)
+            break;
 
           await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
           response = await requestPage();
@@ -298,7 +378,7 @@ export class SPApi {
           })),
         );
 
-        if (!page.next || pageTracks.length === 0) break;
+        if (!page.next || page.items.length === 0) break;
       }
 
       this.albumCache.set(cacheKey, tracks);
@@ -306,28 +386,51 @@ export class SPApi {
     });
   }
 
-  async search(query: string, limit: number = 20) {
-    await this.auth.initialize();
+  async search(query: string, limit = 10) {
+    const safeLimit = Math.max(1, Math.min(10, Math.floor(limit)));
+    const normalizedQuery = query.trim();
+    const cacheKey = `search:${normalizedQuery}:${safeLimit}`;
 
-    const cacheKey = `search:${query}:${limit}`;
+    if (!Number.isFinite(limit)) {
+      throw new Error("Search limit must be finite");
+    }
+    if (!normalizedQuery) {
+      throw new Error("Search query cannot be empty");
+    }
+
     return this.dedupe(cacheKey, async () => {
       if (this.searchCache.has(cacheKey)) {
         return this.searchCache.get(cacheKey);
       }
 
-      const res = await this.http.get<any>("https://api.spotify.com/v1/search", {
+      await this.auth.initialize();
+      const response = await this.http.rest.get<any>("https://api.spotify.com/v1/search", {
+        timeout: 15_000,
         query: {
-          q: query,
+          q: normalizedQuery,
           type: "track,album,artist",
-          limit: limit.toString(),
+          limit: String(safeLimit),
           market: "from_token",
         },
         headers: {
           Authorization: `Bearer ${this.auth.getUser().token}`,
           "Content-Type": "application/json",
         },
-        responseType: "json",
       });
+      const res = response.data;
+      if (response.status === 429) {
+        const header = response.headers["retry-after"];
+        const seconds = Array.isArray(header) ? header[0] : header;
+        throw new Error(
+          `Spotify search is rate limited${seconds ? `; retry after ${seconds}s` : ""}`,
+        );
+      }
+      if (!response.ok || res?.error) {
+        throw new Error(
+          `Spotify search failed: ${res?.error?.message ?? `HTTP ${response.status}`}`,
+        );
+      }
+
       this.searchCache.set(cacheKey, res);
       return res;
     });
