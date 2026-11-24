@@ -64,7 +64,7 @@ async function main() {
 
   // Get Audio URLs
   const audio = await api.getAudio("4cOdK2wGLETKBWATPvgKoq", {
-    quality: "MP4_256"
+    quality: "MP4_256",
   });
   console.log("URLs:", audio.urls);
 }
@@ -75,10 +75,9 @@ main();
 ### Albums and Playlists
 
 ```typescript
-const album = await api.getAlbum(
-  "https://open.spotify.com/album/77a2uhKK8cLvTS0FMyutU7",
-  { maxTracks: 100 },
-);
+const album = await api.getAlbum("https://open.spotify.com/album/77a2uhKK8cLvTS0FMyutU7", {
+  maxTracks: 100,
+});
 console.log(album.name, album.images, album.tracks);
 
 const playlist = await api.getPlaylist("spotify:playlist:37i9dQZF1DZ06evO3uNJq9");
@@ -92,17 +91,17 @@ They return collection metadata with `tracks` as a normalized array, not a Spoti
 
 ### Available Methods
 
-| Method                  | Description                                       |
-| ----------------------- | ------------------------------------------------- |
-| `initialize()`          | Authenticates and fetches tokens.                 |
-| `getTrack(id)`          | Returns metadata (name, artist, album, duration). |
-| `getAudio(id, options)` | Returns file info and resolved CDN URLs.          |
-| `search(query, limit)`  | Searches for tracks, albums, and artists.         |
-| `getAlbum(id, options)` | Returns album metadata and a normalized track array. |
-| `getPlaylist(id, options)` | Returns playlist metadata and a normalized track array. |
-| `getAlbumTracks(id, options)` | Returns only album tracks. |
-| `getPlaylistTracks(id, options)` | Returns only playlist tracks. |
-| `getPlaybackInfo(id)`   | Raw playback data from Spotify API.               |
+| Method                           | Description                                             |
+| -------------------------------- | ------------------------------------------------------- |
+| `initialize()`                   | Authenticates and fetches tokens.                       |
+| `getTrack(id)`                   | Returns metadata (name, artist, album, duration).       |
+| `getAudio(id, options)`          | Returns file info and resolved CDN URLs.                |
+| `search(query, limit)`           | Searches for tracks, albums, and artists.               |
+| `getAlbum(id, options)`          | Returns album metadata and a normalized track array.    |
+| `getPlaylist(id, options)`       | Returns playlist metadata and a normalized track array. |
+| `getAlbumTracks(id, options)`    | Returns only album tracks.                              |
+| `getPlaylistTracks(id, options)` | Returns only playlist tracks.                           |
+| `getPlaybackInfo(id)`            | Raw playback data from Spotify API.                     |
 
 ## 📂 Project Structure
 

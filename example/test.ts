@@ -9,13 +9,13 @@ const USER_AGENT =
 const httpClient = new HyperClient({
   crypto: { digest: false },
   retry: { maxRetries: 2 },
-  verbose: true
+  verbose: true,
 });
 
 async function getServerTime(): Promise<number> {
   const response = await httpClient.get<{ serverTime?: number }>(
     "https://open.spotify.com/api/server-time",
-    { responseType: "json", timeout: 15_000 }
+    { responseType: "json", timeout: 15_000 },
   );
 
   return response.serverTime ? response.serverTime * 1000 : Date.now();
@@ -33,7 +33,7 @@ async function getSessionToken(totpCode: string, totpVer: string) {
       productType: "web-player",
       totp: totpCode,
       totpServer: totpCode,
-      totpVer
+      totpVer,
     },
     headers: {
       accept: "application/json",
@@ -43,10 +43,10 @@ async function getSessionToken(totpCode: string, totpVer: string) {
       referer: HOME_PAGE_URL,
       "user-agent": USER_AGENT,
       "spotify-app-version": CLIENT_VERSION,
-      "app-platform": "WebPlayer"
+      "app-platform": "WebPlayer",
     },
     responseType: "json",
-    timeout: 15_000
+    timeout: 15_000,
   });
 
   const accessToken = response.accessToken ?? response.access_token;
@@ -79,30 +79,26 @@ async function main() {
     client_data: {
       client_version: CLIENT_VERSION,
       client_id: sessionInfo.clientId,
-      js_sdk_data: {}
-    }
+      js_sdk_data: {},
+    },
   };
 
   const response = await httpClient.post<{
     granted_token?: { token?: string };
-  }>(
-    "https://clienttoken.spotify.com/v1/clienttoken",
-    payload,
-    {
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "Accept-Language": "en-US,en;q=0.9",
-        Origin: HOME_PAGE_URL,
-        Referer: HOME_PAGE_URL,
-        "User-Agent": USER_AGENT,
-        "Spotify-App-Version": CLIENT_VERSION,
-        "App-Platform": "WebPlayer"
-      },
-      responseType: "json",
-      timeout: 15_000
-    }
-  );
+  }>("https://clienttoken.spotify.com/v1/clienttoken", payload, {
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "Accept-Language": "en-US,en;q=0.9",
+      Origin: HOME_PAGE_URL,
+      Referer: HOME_PAGE_URL,
+      "User-Agent": USER_AGENT,
+      "Spotify-App-Version": CLIENT_VERSION,
+      "App-Platform": "WebPlayer",
+    },
+    responseType: "json",
+    timeout: 15_000,
+  });
 
   if (!response?.granted_token?.token) {
     throw new Error(`Client token failed: ${JSON.stringify(response)}`);

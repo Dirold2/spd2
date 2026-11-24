@@ -1,42 +1,26 @@
 {
   "name": "spd2",
-  "version": "1.3.1",
-  "type": "module",
+  "version": "1.3.2",
   "description": "A Node.js wrapper for the Spotify API (Unofficial) http://spotify.com",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "keywords": [
+    "api",
+    "music",
+    "spotify",
+    "spotify.music",
+    "wrapper"
+  ],
+  "license": "MIT",
   "author": "Dirold2",
   "contributors": [
     "Dirold2 (https://github.com/dirold2)"
   ],
-  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/dirold2/spd2.git"
   },
-  "keywords": [
-    "spotify",
-    "music",
-    "api",
-    "wrapper",
-    "spotify.music"
-  ],
-  "dependencies": {
-    "crypto": "^1.0.1",
-    "hcacher": "^0.3.1",
-    "hyperttp": "^0.7.5"
-  },
-  "devDependencies": {
-    "@dirold2/dev-tools": "^1.1.3",
-    "@types/node": "^26.6.6",
-    "chalk": "^6.0.1",
-    "dotenv-cli": "^11.1.0",
-    "oxfmt": "^0.78.0",
-    "oxlint": "^1.93.0",
-    "tsx": "^4.23.15",
-    "typescript": "^7.0.2",
-    "vitest": "^5.1.0"
-  },
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc && esbuild 'dist/**/*.js' --outdir=dist --allow-overwrite --minify --sourcemap && d-build",
     "dist": "d-dist",
@@ -54,5 +38,21 @@
     "vitest": "vitest run",
     "smoke:test": "dotenv -e .env -- tsx example/test.ts",
     "smoke:summary": "tsx smoke-runner.ts"
+  },
+  "dependencies": {
+    "crypto": "^1.0.1",
+    "hcacher": "^0.3.1",
+    "hyperttp": "^0.7.6"
+  },
+  "devDependencies": {
+    "@dirold2/dev-tools": "^1.1.3",
+    "@types/node": "^26.6.6",
+    "chalk": "^6.0.1",
+    "dotenv-cli": "^11.1.0",
+    "oxfmt": "^0.78.0",
+    "oxlint": "^1.93.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
   }
 }
