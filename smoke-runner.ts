@@ -41,7 +41,28 @@ function scanDir(dir: string): TestEntry[] {
   return entries;
 }
 
-const tests: TestEntry[] = scanDir("example");
+const includeSpotifyApi = process.argv.includes("--include-spotify-api");
+
+const SPOTIFY_API_EXAMPLES = new Set([
+  "example/album.ts",
+  "example/playlist.ts",
+  "example/search.ts",
+]);
+
+const allTests = scanDir("example");
+
+const tests = allTests.filter(
+  ({ label }) =>
+    includeSpotifyApi || !SPOTIFY_API_EXAMPLES.has(label),
+);
+
+const skipped = allTests.length - tests.length;
+
+if (skipped > 0) {
+  console.log(
+    chalk.yellow(`Skipping ${skipped} Spotify Web API integration examples.`),
+  );
+}
 
 // ----------------------------
 // RUN SINGLE TEST
