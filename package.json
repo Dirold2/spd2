@@ -36,7 +36,8 @@
     "test": "npm run test:collections",
     "vitest": "vitest run",
     "smoke:test": "dotenv -e .env -- tsx example/test.ts",
-    "smoke:summary": "tsx smoke-runner.ts"
+    "smoke:summary": "tsx smoke-runner.ts",
+    "smoke:spotify-api": "tsx smoke-runner.ts --include-spotify-api"
   },
   "dependencies": {
     "crypto": "^1.0.1",
